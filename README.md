@@ -24,7 +24,7 @@ Simulation ──HTTP──▶   API   ──Flux──▶  InfluxDB
 aquatic-labs-interview/
 ├── simulation/              # Sensor simulator
 │   ├── sensor_simulator.py  # Main simulator script
-│   └── README.md           # Simulation documentation
+│   └─- __init__.py          # Init file
 ├── api/                    # REST API server
 │   ├── app.py              # Flask application
 │   └── README.md          # API documentation
@@ -60,7 +60,7 @@ pip install -r requirements.txt
 Launch InfluxDB using Docker Compose:
 
 ```bash
-docker-compose up -d
+cd storage && docker-compose up -d
 ```
 
 Verify InfluxDB is running:
@@ -72,8 +72,7 @@ docker ps
 ### 3. Start the API Server
 
 ```bash
-cd api
-python app.py
+python -m api.app
 ```
 
 The API will be available at `http://localhost:8081`
@@ -83,8 +82,7 @@ The API will be available at `http://localhost:8081`
 In a new terminal (with the virtual environment activated):
 
 ```bash
-cd simulation
-python sensor_simulator.py
+python3 -m simulation.sensor_simulator
 ```
 
 You should see measurements being sent
@@ -121,7 +119,7 @@ GET /health
 
 
 ## Testing the API
-Refer to @api/README.md
+Refer to [API README](api/README.md)
 
 
 ### Accessing InfluxDB UI
@@ -131,37 +129,6 @@ The InfluxDB web interface is available at `http://localhost:8086`
 Login credentials:
 - **Username:** `admin`
 - **Password:** `adminpassword`
-
-## Development
-
-### Running Components Separately
-
-**API Server:**
-```bash
-cd api
-python app.py
-```
-
-**Sensor Simulator:**
-```bash
-cd simulation
-python sensor_simulator.py
-```
-
-### Installing Module Dependencies
-
-Each module has its own `requirements.txt`:
-
-```bash
-# For simulation only
-pip install -r simulation/requirements.txt
-
-# For API only
-pip install -r api/requirements.txt
-
-# For storage only
-pip install -r storage/requirements.txt
-```
 
 ### InfluxDB Schema
 
