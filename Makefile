@@ -236,10 +236,6 @@ query-stats: ## Query statistics (example)
 	@echo "$(YELLOW)Querying statistics for sensor_001 (last 2 hours)...$(NC)"
 	@curl -s "http://localhost:8081/measurements/sensor_001/statistics?start=-2h" | python3 -m json.tool
 
-# Docker shortcuts
-docker-ps: ## Show running containers
-	@docker ps
-
 docker-logs: ## Show InfluxDB container logs
 	@cd $(STORAGE_DIR) && docker-compose logs
 
@@ -261,4 +257,3 @@ lint: ## Run linting (if installed)
 	else \
 		echo "$(RED)flake8 not installed. Install with: pip install flake8$(NC)"; \
 	fi
-
