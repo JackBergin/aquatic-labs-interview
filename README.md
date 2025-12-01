@@ -89,7 +89,6 @@ python sensor_simulator.py
 
 You should see measurements being sent
 
-
 ## API Endpoints
 
 ### Submit Measurement
@@ -121,31 +120,9 @@ GET /health
 ```
 
 
-## Testing the System
+## Testing the API
+Refer to @api/README.md
 
-### Using curl
-
-**Submit a measurement:**
-```bash
-curl -X POST http://localhost:8081/measurements \
-  -H "Content-Type: application/json" \
-  -d '{
-    "sensor_id": "test_sensor",
-    "timestamp": "2024-12-01T10:30:00Z",
-    "temperature": 25.3,
-    "conductivity": 1542
-  }'
-```
-
-**Retrieve measurements:**
-```bash
-curl http://localhost:8081/measurements/sensor_001
-```
-
-**List all sensors:**
-```bash
-curl http://localhost:8081/sensors
-```
 
 ### Accessing InfluxDB UI
 
