@@ -205,3 +205,10 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Process ID files
+.api.pid
+.simulator.pid
+
+# Log files
+logs/*.log

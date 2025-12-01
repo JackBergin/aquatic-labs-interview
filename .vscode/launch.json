@@ -2,12 +2,80 @@
     "version": "1.0.0",
     "configurations": [
       {
-        "name": "Python Debug",
+        "name": "Debug API Server",
+        "type": "debugpy",
+        "request": "launch",
+        "module": "api.app",
+        "cwd": "${workspaceFolder}",
+        "console": "integratedTerminal",
+        "envFile": "${workspaceFolder}/.env.local",
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}",
+          "INFLUXDB_URL": "http://localhost:8086",
+          "INFLUXDB_TOKEN": "my-super-secret-auth-token",
+          "INFLUXDB_ORG": "aquatic-labs",
+          "INFLUXDB_BUCKET": "water-quality"
+        },
+        "justMyCode": false
+      },
+      {
+        "name": "Debug Sensor Simulator",
+        "type": "debugpy",
+        "request": "launch",
+        "module": "simulation.sensor_simulator",
+        "cwd": "${workspaceFolder}",
+        "console": "integratedTerminal",
+        "envFile": "${workspaceFolder}/.env.local",
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}"
+        },
+        "justMyCode": false
+      },
+      {
+        "name": "Debug Aggregation Setup",
+        "type": "debugpy",
+        "request": "launch",
+        "module": "operations.aggregation_runner",
+        "cwd": "${workspaceFolder}",
+        "console": "integratedTerminal",
+        "envFile": "${workspaceFolder}/.env.local",
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}",
+          "INFLUXDB_URL": "http://localhost:8086",
+          "INFLUXDB_TOKEN": "my-super-secret-auth-token",
+          "INFLUXDB_ORG": "aquatic-labs",
+          "INFLUXDB_BUCKET": "water-quality"
+        },
+        "justMyCode": false
+      },
+      {
+        "name": "Python Debug (Current File)",
         "type": "debugpy",
         "request": "launch",
         "program": "${file}",
         "console": "integratedTerminal",
-        "envFile": "${workspaceFolder}/.env"
+        "envFile": "${workspaceFolder}/.env.local",
+        "justMyCode": false
+      }
+    ],
+    "compounds": [
+      {
+        "name": "Debug API + Simulator",
+        "configurations": ["Debug API Server", "Debug Sensor Simulator"],
+        "stopAll": true,
+        "presentation": {
+          "hidden": false,
+          "group": "main"
+        }
+      },
+      {
+        "name": "Debug Full System",
+        "configurations": ["Debug API Server", "Debug Sensor Simulator"],
+        "stopAll": true,
+        "presentation": {
+          "hidden": false,
+          "group": "main"
+        }
       }
     ]
   }
