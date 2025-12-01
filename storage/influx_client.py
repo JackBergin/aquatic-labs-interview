@@ -204,7 +204,7 @@ class InfluxDBClient:
                 |> filter(fn: (r) => r["_measurement"] == "{measurement_name}")
                 |> filter(fn: (r) => r["sensor_id"] == "{sensor_id}")
                 |> filter(fn: (r) => r["_field"] == "temperature" or r["_field"] == "conductivity")
-                |> filter(fn: (r) => r["stat_type"] == "mean" or r["stat_type"] == "min" or r["stat_type"] == "max" or r["stat_type"] == "count")
+                |> filter(fn: (r) => r["stat_type"] == "mean" or r["stat_type"] == "min" or r["stat_type"] == "max")
                 |> sort(columns: ["_time"], desc: true)
             '''
             

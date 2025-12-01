@@ -19,39 +19,51 @@ class AggregationTaskManager:
         
         logger.info("Aggregation Task Manager initialized")
     
-    def create_one_minute_aggregation_task(self):
+    def _create_aggregation_task(self, task_name, window, stat_fn, stat_type):
         """
-        Create a task that aggregates raw data into 1-minute windows.
-        Runs every minute to aggregate the previous minute's data.
-        """
-        task_name = "aggregate_1m_windows"
+        Helper to create a single aggregation task.
         
-        # Check if task already exists
+        Args:
+            task_name: Name of the task
+            window: Time window (e.g., "1m", "5m")
+            stat_fn: Aggregation function (mean, min, max, count)
+            stat_type: Type label (mean, min, max, count)
+        """
         existing_tasks = self.tasks_api.find_tasks(name=task_name)
         if existing_tasks:
             logger.info(f"Task '{task_name}' already exists")
             return existing_tasks[0]
         
-        # Flux script for 1-minute aggregation  
-        # Each stat type as separate task would be better, but for now combine them
+        # Determine time range based on window
+        if window == "1m":
+            start_time = "-2m"
+            stop_time = "-1m"
+            every = "1m"
+            offset = "10s"
+        else:  # 5m
+            start_time = "-70m"
+            stop_time = "-65m"
+            every = "5m"
+            offset = "30s"
+        
         flux_script = f'''
 option task = {{
   name: "{task_name}",
-  every: 1m,
-  offset: 10s
+  every: {every},
+  offset: {offset}
 }}
 
 from(bucket: "{self.bucket}")
-  |> range(start: -2m, stop: -1m)
+  |> range(start: {start_time}, stop: {stop_time})
   |> filter(fn: (r) => r["_measurement"] == "water_quality")
   |> filter(fn: (r) => r["_field"] == "temperature" or r["_field"] == "conductivity")
-  |> aggregateWindow(every: 1m, fn: mean, createEmpty: false)
-  |> set(key: "stat_type", value: "mean")
-  |> set(key: "_measurement", value: "water_quality_1m")
+  |> aggregateWindow(every: {window}, fn: {stat_fn}, createEmpty: false)
+  |> set(key: "stat_type", value: "{stat_type}")
+  |> set(key: "_measurement", value: "water_quality_{window}")
   |> to(bucket: "{self.bucket}")
 '''
         
-        try:            
+        try:
             task_request = TaskCreateRequest(
                 org=self.org,
                 flux=flux_script,
@@ -62,63 +74,37 @@ from(bucket: "{self.bucket}")
             logger.info(f"Created task: {task_name}")
             return task
         except Exception as e:
-            logger.error(f"Error creating 1m aggregation task: {e}")
+            logger.error(f"Error creating task {task_name}: {e}")
             return None
+    
+    def create_one_minute_aggregation_task(self):
+        """Create all 1-minute aggregation tasks (mean, min, max)."""
+        tasks = []
+        tasks.append(self._create_aggregation_task("aggregate_1m_mean", "1m", "mean", "mean"))
+        tasks.append(self._create_aggregation_task("aggregate_1m_min", "1m", "min", "min"))
+        tasks.append(self._create_aggregation_task("aggregate_1m_max", "1m", "max", "max"))
+        return all(t is not None for t in tasks)
     
     def create_five_minute_aggregation_task(self):
-        """
-        Create a task that downsamples 1-minute data to 5-minute windows.
-        Runs every 5 minutes for data older than 1 hour.
-        """
-        task_name = "aggregate_5m_windows"
-        
-        # Check if task already exists
-        existing_tasks = self.tasks_api.find_tasks(name=task_name)
-        if existing_tasks:
-            logger.info(f"Task '{task_name}' already exists")
-            return existing_tasks[0]
-        
-        # Flux script for 5-minute aggregation from raw data older than 1 hour
-        flux_script = f'''
-option task = {{
-  name: "{task_name}",
-  every: 5m,
-  offset: 30s
-}}
-
-from(bucket: "{self.bucket}")
-  |> range(start: -70m, stop: -65m)
-  |> filter(fn: (r) => r["_measurement"] == "water_quality")
-  |> filter(fn: (r) => r["_field"] == "temperature" or r["_field"] == "conductivity")
-  |> aggregateWindow(every: 5m, fn: mean, createEmpty: false)
-  |> set(key: "stat_type", value: "mean")
-  |> set(key: "_measurement", value: "water_quality_5m")
-  |> to(bucket: "{self.bucket}")
-'''
-        
-        try:            
-            task_request = TaskCreateRequest(
-                org=self.org,
-                flux=flux_script,
-                status="active"
-            )
-            
-            task = self.tasks_api.create_task(task_create_request=task_request)
-            logger.info(f"Created task: {task_name}")
-            return task
-        except Exception as e:
-            logger.error(f"Error creating 5m aggregation task: {e}")
-            return None
+        """Create all 5-minute aggregation tasks (mean, min, max)."""
+        tasks = []
+        tasks.append(self._create_aggregation_task("aggregate_5m_mean", "5m", "mean", "mean"))
+        tasks.append(self._create_aggregation_task("aggregate_5m_min", "5m", "min", "min"))
+        tasks.append(self._create_aggregation_task("aggregate_5m_max", "5m", "max", "max"))
+        return all(t is not None for t in tasks)
     
     def setup_all_tasks(self):
-        """Set up all aggregation tasks."""
+        """Set up all aggregation tasks (6 total: 3 for 1m, 3 for 5m)."""
         logger.info("Setting up aggregation tasks...")
+        logger.info("Creating 1-minute aggregation tasks (mean, min, max)...")
         
         task_1m = self.create_one_minute_aggregation_task()
+        
+        logger.info("Creating 5-minute aggregation tasks (mean, min, max)...")
         task_5m = self.create_five_minute_aggregation_task()
         
         if task_1m and task_5m:
-            logger.info("All aggregation tasks configured successfully")
+            logger.info("All aggregation tasks configured successfully (6 tasks)")
             return True
         else:
             logger.error("Failed to configure some aggregation tasks")
@@ -156,6 +142,17 @@ from(bucket: "{self.bucket}")
     def delete_all_aggregation_tasks(self):
         """Delete all aggregation tasks (useful for cleanup/reset)."""
         logger.info("Deleting all aggregation tasks...")
+        # Delete 1-minute tasks
+        self.delete_task("aggregate_1m_mean")
+        self.delete_task("aggregate_1m_min")
+        self.delete_task("aggregate_1m_max")
+        self.delete_task("aggregate_1m_count")
+        # Delete 5-minute tasks
+        self.delete_task("aggregate_5m_mean")
+        self.delete_task("aggregate_5m_min")
+        self.delete_task("aggregate_5m_max")
+        self.delete_task("aggregate_5m_count")
+        # Delete old task names if they exist
         self.delete_task("aggregate_1m_windows")
         self.delete_task("aggregate_5m_windows")
         logger.info("Cleanup complete")
@@ -188,4 +185,3 @@ if __name__ == '__main__':
         manager.setup_all_tasks()
     
     manager.close()
-
