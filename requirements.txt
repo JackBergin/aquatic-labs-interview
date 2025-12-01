@@ -3,3 +3,4 @@ Flask
 Flask-CORS
 influxdb-client
 python-dotenv
+flake8

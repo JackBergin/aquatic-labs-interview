@@ -67,13 +67,13 @@ start-simulator: ## Start the sensor simulator
 run-all: ## Run API and Simulator in background
 	@echo "$(YELLOW)Starting all services...$(NC)"
 	@echo "$(YELLOW)Starting API server in background...$(NC)"
-	@$(PYTHON) -m $(API_MODULE) > logs/api.log 2>&1 & echo $$! > .api.pid
+	@$(PYTHON) -m $(API_MODULE) > logs/api.log 2>&1 & echo $$! > logs/.api.pid
 	@sleep 2
-	@echo "$(GREEN)✓ API server started (PID: $$(cat .api.pid))$(NC)"
+	@echo "$(GREEN)✓ API server started (PID: $$(cat logs/.api.pid))$(NC)"
 	@echo "$(YELLOW)Starting sensor simulator in background...$(NC)"
-	@$(PYTHON) -m $(SIMULATOR_MODULE) > logs/simulator.log 2>&1 & echo $$! > .simulator.pid
+	@$(PYTHON) -m $(SIMULATOR_MODULE) > logs/simulator.log 2>&1 & echo $$! > logs/.simulator.pid
 	@sleep 2
-	@echo "$(GREEN)✓ Simulator started (PID: $$(cat .simulator.pid))$(NC)"
+	@echo "$(GREEN)✓ Simulator started (PID: $$(cat logs/.simulator.pid))$(NC)"
 	@echo ""
 	@echo "$(GREEN)All services running!$(NC)"
 	@echo "  API:       http://localhost:8081"
@@ -87,14 +87,14 @@ run-all: ## Run API and Simulator in background
 
 stop: ## Stop all running services
 	@echo "$(YELLOW)Stopping services...$(NC)"
-	@if [ -f .api.pid ]; then \
-		kill $$(cat .api.pid) 2>/dev/null || true; \
-		rm .api.pid; \
+	@if [ -f logs/.api.pid ]; then \
+		kill $$(cat logs/.api.pid) 2>/dev/null || true; \
+		rm logs/.api.pid; \
 		echo "$(GREEN)✓ API server stopped$(NC)"; \
 	fi
-	@if [ -f .simulator.pid ]; then \
-		kill $$(cat .simulator.pid) 2>/dev/null || true; \
-		rm .simulator.pid; \
+	@if [ -f logs/.simulator.pid ]; then \
+		kill $$(cat logs/.simulator.pid) 2>/dev/null || true; \
+		rm logs/.simulator.pid; \
 		echo "$(GREEN)✓ Simulator stopped$(NC)"; \
 	fi
 	@pkill -f "$(API_MODULE)" 2>/dev/null || true
@@ -108,7 +108,7 @@ stop-db: ## Stop InfluxDB
 
 clean: stop stop-db ## Stop all services and clean up
 	@echo "$(YELLOW)Cleaning up...$(NC)"
-	@rm -f .api.pid .simulator.pid
+	@rm -f logs/.api.pid logs/.simulator.pid
 	@rm -rf logs/*.log
 	@find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 	@find . -type f -name "*.pyc" -delete 2>/dev/null || true
@@ -141,11 +141,11 @@ health: ## Check health of all services
 	fi
 	@echo ""
 	@echo "Processes:"
-	@if [ -f .api.pid ]; then \
-		echo "  API PID: $$(cat .api.pid)"; \
+	@if [ -f logs/.api.pid ]; then \
+		echo "  API PID: $$(cat logs/.api.pid)"; \
 	fi
-	@if [ -f .simulator.pid ]; then \
-		echo "  Simulator PID: $$(cat .simulator.pid)"; \
+	@if [ -f logs/.simulator.pid ]; then \
+		echo "  Simulator PID: $$(cat logs/.simulator.pid)"; \
 	fi
 
 test-api: ## Test API endpoints
@@ -204,16 +204,16 @@ status: health ## Alias for health check
 restart: stop run-all ## Restart all services
 
 restart-api: ## Restart only the API server
-	@if [ -f .api.pid ]; then \
-		kill $$(cat .api.pid) 2>/dev/null || true; \
-		rm .api.pid; \
+	@if [ -f logs/.api.pid ]; then \
+		kill $$(cat logs/.api.pid) 2>/dev/null || true; \
+		rm logs/.api.pid; \
 	fi
 	@$(MAKE) --no-print-directory start-api
 
 restart-simulator: ## Restart only the simulator
-	@if [ -f .simulator.pid ]; then \
-		kill $$(cat .simulator.pid) 2>/dev/null || true; \
-		rm .simulator.pid; \
+	@if [ -f logs/.simulator.pid ]; then \
+		kill $$(cat logs/.simulator.pid) 2>/dev/null || true; \
+		rm logs/.simulator.pid; \
 	fi
 	@$(MAKE) --no-print-directory start-simulator
 

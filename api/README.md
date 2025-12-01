@@ -111,10 +111,6 @@ Retrieve detailed pre-computed statistics (mean, min, max, count) with automatic
 
 This endpoint reads from pre-computed aggregations stored by background tasks.
 
-Automatic Resolution Selection:
-- Queries ≤ 1 hour: Uses `water_quality_1m` (1-minute windows)
-- Queries > 1 hour: Uses `water_quality_5m` (5-minute windows)
-
 Query Parameters:
 - start - Start time (relative like "-1h" or ISO format, default: "-7d")
 - end   - End time (ISO format, optional)

@@ -1,7 +1,6 @@
 import os
 from influxdb_client import InfluxDBClient as InfluxClient, Point
 from influxdb_client.client.write_api import SYNCHRONOUS
-
 from utils.logger_config import setup_logging
 
 logger = setup_logging("influx_db_client")
@@ -24,7 +23,7 @@ class InfluxDBClient:
         logger.info(f"  URL: {self.url}")
         logger.info(f"  Org: {self.org}")
         logger.info(f"  Bucket: {self.bucket}")
-    
+
     def write_measurement(self, sensor_id, timestamp, temperature, conductivity):
         """Write a sensor measurement to InfluxDB."""
         try:
@@ -42,7 +41,7 @@ class InfluxDBClient:
         except Exception as e:
             logger.error(f"Error writing to InfluxDB: {e}")
             return False
-    
+
     def read_measurements(self, sensor_id, start_time=None, end_time=None, limit=100):
         """
         Read measurements from InfluxDB for a specific sensor.
@@ -52,7 +51,6 @@ class InfluxDBClient:
             end_time (str): End time in ISO format (optional)
             limit (int): A limit for the number of returned measurements
         Returns:
-
         """
         try:
             # Build Flux query
@@ -68,10 +66,9 @@ class InfluxDBClient:
                 |> sort(columns: ["_time"], desc: true)
                 |> limit(n: {limit})
             '''
-            
             # Execute query
             tables = self.query_api.query(query, org=self.org)
-            
+
             # Parse results
             measurements = []
             for table in tables:
@@ -84,7 +81,7 @@ class InfluxDBClient:
                     })
             
             return measurements
-            
+        
         except Exception as e:
             logger.error(f"Error reading from InfluxDB: {e}")
             return []
