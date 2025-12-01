@@ -3,25 +3,26 @@ from utils.logger_config import setup_logging
 
 logger = setup_logging("setup")
 
+
 def main():
     """Set up all aggregation tasks."""
     logger.info("=" * 60)
     logger.info("Setting up InfluxDB aggregation tasks")
     logger.info("=" * 60)
     logger.info("")
-    
+
     manager = AggregationTaskManager()
-    
+
     try:
         # List existing tasks
         logger.info("Checking existing tasks...")
         existing_tasks = manager.list_tasks()
         logger.info("")
-        
+
         # Set up aggregation tasks
         logger.info("Creating aggregation tasks...")
         success = manager.setup_all_tasks()
-        
+
         if success:
             logger.info("")
             logger.info("=" * 60)
@@ -48,11 +49,10 @@ def main():
             logger.error("  1. InfluxDB is running (docker-compose up -d)")
             logger.error("  2. Environment variables are set correctly")
             logger.error("  3. Check logs above for specific errors")
-    
+
     finally:
         manager.close()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
-

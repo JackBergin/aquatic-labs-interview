@@ -7,10 +7,11 @@ from typing import Optional
 def sanitize_log_name(log_name: str) -> str:
     """Convert log names into safe filesystem-friendly names."""
     sanitized = log_name.strip().strip("/\\")
-    invalid_chars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|', ' ']
+    invalid_chars = ["/", "\\", ":", "*", "?", '"', "<", ">", "|", " "]
     for char in invalid_chars:
         sanitized = sanitized.replace(char, "_")
     return sanitized or "default_logger"
+
 
 def setup_logging(log_name: Optional[str] = None) -> logging.Logger:
     """
@@ -63,29 +64,28 @@ def setup_logging(log_name: Optional[str] = None) -> logging.Logger:
     # Handle nested log names
     parts = [p for p in Path(log_name).parts if p.strip()]
     sanitized_parts = [sanitize_log_name(part) for part in parts]
-    
+
     if len(sanitized_parts) > 1:
         nested_dir = base_dir.joinpath(*sanitized_parts[:-1])
     else:
         nested_dir = base_dir
 
     nested_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Final log file path
     log_file = nested_dir / f"{sanitized_parts[-1]}_{datetime.now():%Y-%m-%d}.log"
-    
+
     # Handlers
     file_handler = logging.FileHandler(log_file)
     console_handler = logging.StreamHandler()
-    
+
     formatter = logging.Formatter(
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
     file_handler.setFormatter(formatter)
     console_handler.setFormatter(formatter)
-    
+
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
-    
-    return logger
 
+    return logger
