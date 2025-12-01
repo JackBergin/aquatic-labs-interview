@@ -1,1 +1,5 @@
 requests
+Flask
+Flask-CORS
+influxdb-client
+python-dotenv
