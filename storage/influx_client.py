@@ -44,7 +44,16 @@ class InfluxDBClient:
             return False
     
     def read_measurements(self, sensor_id, start_time=None, end_time=None, limit=100):
-        """Read measurements from InfluxDB for a specific sensor."""
+        """
+        Read measurements from InfluxDB for a specific sensor.
+        Args:
+            sensor_id (str): Unique identifier for the sensor
+            start_time (str): Start time in ISO format or relative time (e.g., "-1h")
+            end_time (str): End time in ISO format (optional)
+            limit (int): A limit for the number of returned measurements
+        Returns:
+
+        """
         try:
             # Build Flux query
             time_range = start_time if start_time else "-7d"
@@ -104,6 +113,145 @@ class InfluxDBClient:
             
         except Exception as e:
             logger.error(f"Error listing sensors from InfluxDB: {e}")
+            return []
+    
+    def read_aggregated_measurements(self, sensor_id, start_time=None, end_time=None, window="1m"):
+        """
+        Read pre-computed aggregated measurements from InfluxDB.
+        
+        Reads from:
+        - water_quality_1m for 1-minute aggregations
+        - water_quality_5m for 5-minute aggregations
+        
+        Args:
+            sensor_id (str): Unique identifier for the sensor
+            start_time (str): Start time in ISO format or relative time (e.g., "-1h")
+            end_time (str): End time in ISO format (optional)
+            window (str): Aggregation window ("1m" or "5m")
+        
+        Returns:
+            list: List of aggregated measurement dictionaries (mean values)
+        """
+        try:
+            time_range = start_time if start_time else "-7d"
+            
+            # Select the appropriate pre-aggregated measurement
+            measurement_name = f"water_quality_{window}"
+            
+            # Query pre-computed aggregations (mean values)
+            query = f'''
+            from(bucket: "{self.bucket}")
+                |> range(start: {time_range}'''
+            
+            if end_time:
+                query += f', stop: {end_time}'
+            
+            query += f''')
+                |> filter(fn: (r) => r["_measurement"] == "{measurement_name}")
+                |> filter(fn: (r) => r["sensor_id"] == "{sensor_id}")
+                |> filter(fn: (r) => r["stat_type"] == "mean")
+                |> filter(fn: (r) => r["_field"] == "temperature" or r["_field"] == "conductivity")
+                |> pivot(rowKey:["_time", "sensor_id"], columnKey: ["_field"], valueColumn: "_value")
+                |> sort(columns: ["_time"], desc: true)
+            '''
+            
+            tables = self.query_api.query(query, org=self.org)
+            
+            measurements = []
+            for table in tables:
+                for record in table.records:
+                    measurements.append({
+                        'timestamp': record.get_time().isoformat(),
+                        'sensor_id': record.values.get('sensor_id'),
+                        'temperature': record.values.get('temperature'),
+                        'conductivity': record.values.get('conductivity'),
+                        'window': window
+                    })
+            
+            return measurements
+            
+        except Exception as e:
+            logger.error(f"Error reading aggregated data from InfluxDB: {e}")
+            return []
+    
+    def read_aggregated_statistics(self, sensor_id, start_time=None, end_time=None, window="1m"):
+        """
+        Read detailed pre-computed statistics (mean, min, max, count) from InfluxDB.
+        
+        Reads from pre-aggregated measurements:
+        - water_quality_1m for 1-minute windows
+        - water_quality_5m for 5-minute windows
+        
+        Args:
+            sensor_id (str): Unique identifier for the sensor
+            start_time (str): Start time in ISO format or relative time
+            end_time (str): End time in ISO format (optional)
+            window (str): Aggregation window ("1m" or "5m")
+        
+        Returns:
+            list: List of statistical aggregations per time window
+        """
+        try:
+            time_range = start_time if start_time else "-7d"
+            measurement_name = f"water_quality_{window}"
+            
+            # Query all statistics from pre-computed aggregations
+            query = f'''
+            from(bucket: "{self.bucket}")
+                |> range(start: {time_range}'''
+            
+            if end_time:
+                query += f', stop: {end_time}'
+                
+            query += f''')
+                |> filter(fn: (r) => r["_measurement"] == "{measurement_name}")
+                |> filter(fn: (r) => r["sensor_id"] == "{sensor_id}")
+                |> filter(fn: (r) => r["_field"] == "temperature" or r["_field"] == "conductivity")
+                |> filter(fn: (r) => r["stat_type"] == "mean" or r["stat_type"] == "min" or r["stat_type"] == "max" or r["stat_type"] == "count")
+                |> sort(columns: ["_time"], desc: true)
+            '''
+            
+            tables = self.query_api.query(query, org=self.org)
+            
+            # Parse and organize results by timestamp
+            stats_by_time = {}
+            
+            for table in tables:
+                for record in table.records:
+                    timestamp = record.get_time().isoformat()
+                    sensor_id_val = record.values.get('sensor_id')
+                    field = record.values.get('_field')
+                    stat_type = record.values.get('stat_type')
+                    value = record.values.get('_value')
+                    
+                    # Create key for this time window
+                    key = f"{timestamp}_{sensor_id_val}"
+                    
+                    if key not in stats_by_time:
+                        stats_by_time[key] = {
+                            'timestamp': timestamp,
+                            'sensor_id': sensor_id_val,
+                            'window': window,
+                            'temperature': {},
+                            'conductivity': {}
+                        }
+                    
+                    # Add statistic
+                    if field and stat_type:
+                        if field == 'temperature':
+                            stats_by_time[key]['temperature'][stat_type] = value
+                        elif field == 'conductivity':
+                            stats_by_time[key]['conductivity'][stat_type] = value
+            
+            # Convert to list and sort by timestamp
+            result = sorted(stats_by_time.values(), 
+                          key=lambda x: x['timestamp'], 
+                          reverse=True)
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error reading aggregated statistics from InfluxDB: {e}")
             return []
     
     def close(self):

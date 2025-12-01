@@ -40,30 +40,41 @@ option task = {{
   offset: 10s
 }}
 
-data = from(bucket: "{self.bucket}")
+// Mean aggregation
+from(bucket: "{self.bucket}")
   |> range(start: -2m, stop: -1m)
   |> filter(fn: (r) => r["_measurement"] == "water_quality")
   |> filter(fn: (r) => r["_field"] == "temperature" or r["_field"] == "conductivity")
-
-data
   |> aggregateWindow(every: 1m, fn: mean, createEmpty: false)
   |> set(key: "stat_type", value: "mean")
   |> set(key: "_measurement", value: "water_quality_1m")
   |> to(bucket: "{self.bucket}")
 
-data
+// Min aggregation
+from(bucket: "{self.bucket}")
+  |> range(start: -2m, stop: -1m)
+  |> filter(fn: (r) => r["_measurement"] == "water_quality")
+  |> filter(fn: (r) => r["_field"] == "temperature" or r["_field"] == "conductivity")
   |> aggregateWindow(every: 1m, fn: min, createEmpty: false)
   |> set(key: "stat_type", value: "min")
   |> set(key: "_measurement", value: "water_quality_1m")
   |> to(bucket: "{self.bucket}")
 
-data
+// Max aggregation
+from(bucket: "{self.bucket}")
+  |> range(start: -2m, stop: -1m)
+  |> filter(fn: (r) => r["_measurement"] == "water_quality")
+  |> filter(fn: (r) => r["_field"] == "temperature" or r["_field"] == "conductivity")
   |> aggregateWindow(every: 1m, fn: max, createEmpty: false)
   |> set(key: "stat_type", value: "max")
   |> set(key: "_measurement", value: "water_quality_1m")
   |> to(bucket: "{self.bucket}")
 
-data
+// Count aggregation
+from(bucket: "{self.bucket}")
+  |> range(start: -2m, stop: -1m)
+  |> filter(fn: (r) => r["_measurement"] == "water_quality")
+  |> filter(fn: (r) => r["_field"] == "temperature" or r["_field"] == "conductivity")
   |> aggregateWindow(every: 1m, fn: count, createEmpty: false)
   |> set(key: "stat_type", value: "count")
   |> set(key: "_measurement", value: "water_quality_1m")
@@ -105,30 +116,41 @@ option task = {{
   offset: 30s
 }}
 
-data = from(bucket: "{self.bucket}")
+// Mean aggregation
+from(bucket: "{self.bucket}")
   |> range(start: -70m, stop: -65m)
   |> filter(fn: (r) => r["_measurement"] == "water_quality")
   |> filter(fn: (r) => r["_field"] == "temperature" or r["_field"] == "conductivity")
-
-data
   |> aggregateWindow(every: 5m, fn: mean, createEmpty: false)
   |> set(key: "stat_type", value: "mean")
   |> set(key: "_measurement", value: "water_quality_5m")
   |> to(bucket: "{self.bucket}")
 
-data
+// Min aggregation
+from(bucket: "{self.bucket}")
+  |> range(start: -70m, stop: -65m)
+  |> filter(fn: (r) => r["_measurement"] == "water_quality")
+  |> filter(fn: (r) => r["_field"] == "temperature" or r["_field"] == "conductivity")
   |> aggregateWindow(every: 5m, fn: min, createEmpty: false)
   |> set(key: "stat_type", value: "min")
   |> set(key: "_measurement", value: "water_quality_5m")
   |> to(bucket: "{self.bucket}")
 
-data
+// Max aggregation
+from(bucket: "{self.bucket}")
+  |> range(start: -70m, stop: -65m)
+  |> filter(fn: (r) => r["_measurement"] == "water_quality")
+  |> filter(fn: (r) => r["_field"] == "temperature" or r["_field"] == "conductivity")
   |> aggregateWindow(every: 5m, fn: max, createEmpty: false)
   |> set(key: "stat_type", value: "max")
   |> set(key: "_measurement", value: "water_quality_5m")
   |> to(bucket: "{self.bucket}")
 
-data
+// Count aggregation
+from(bucket: "{self.bucket}")
+  |> range(start: -70m, stop: -65m)
+  |> filter(fn: (r) => r["_measurement"] == "water_quality")
+  |> filter(fn: (r) => r["_field"] == "temperature" or r["_field"] == "conductivity")
   |> aggregateWindow(every: 5m, fn: count, createEmpty: false)
   |> set(key: "stat_type", value: "count")
   |> set(key: "_measurement", value: "water_quality_5m")

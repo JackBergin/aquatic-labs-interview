@@ -4,8 +4,8 @@ Flask-based REST API that receives sensor measurements and stores them in Influx
 """
 from flask import Flask, request, jsonify
 from datetime import datetime
-from utils.logger_config import setup_logging
 from storage.influx_client import InfluxDBClient
+from utils.logger_config import setup_logging
 
 logger = setup_logging("api")
 
@@ -111,6 +111,121 @@ def list_sensors():
         }), 200
     except Exception as e:
         logger.error(f"Error listing sensors: {e}")
+        return jsonify({
+            'error': 'Internal server error',
+            'details': str(e)
+        }), 500
+
+@app.route('/measurements/<sensor_id>/aggregated', methods=['GET'])
+def get_aggregated_measurements(sensor_id):
+    """
+    Retrieve aggregated measurements for a specific sensor.
+    
+    Automatically selects resolution based on time range:
+    - 1-minute windows for the most recent hour
+    - 5-minute windows for anything past that
+    
+    Query parameters:
+    - start: Start time (ISO format or relative like "-1h", default: "-7d")
+    - end: End time (ISO format, optional)
+    - window: Override automatic window selection ("1m", "5m", "15m", "1h")
+    """
+    try:
+        start_time = request.args.get('start', '-7d')
+        end_time = request.args.get('end')
+        window = request.args.get('window')
+        
+        # Auto-select window based on time range if not specified
+        if not window:
+            # Parse relative time to determine appropriate window
+            if start_time.startswith('-'):
+                # Extract the time value
+                if 'm' in start_time:  # minutes
+                    minutes = int(start_time.replace('-', '').replace('m', ''))
+                    window = '1m' if minutes <= 60 else '5m'
+                elif 'h' in start_time:  # hours
+                    hours = int(start_time.replace('-', '').replace('h', ''))
+                    window = '1m' if hours <= 1 else '5m'
+                elif 'd' in start_time:  # days
+                    window = '5m'
+                else:
+                    window = '5m'
+            else:
+                # Default to 5m for absolute timestamps
+                window = '5m'
+        
+        measurements = influx_client.read_aggregated_measurements(
+            sensor_id=sensor_id,
+            start_time=start_time,
+            end_time=end_time,
+            window=window
+        )
+        
+        return jsonify({
+            'sensor_id': sensor_id,
+            'count': len(measurements),
+            'window': window,
+            'measurements': measurements
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error retrieving aggregated measurements: {e}")
+        return jsonify({
+            'error': 'Internal server error',
+            'details': str(e)
+        }), 500
+
+@app.route('/measurements/<sensor_id>/statistics', methods=['GET'])
+def get_measurement_statistics(sensor_id):
+    """
+    Retrieve detailed statistics (mean, min, max, count) for sensor measurements.
+    
+    Automatically selects resolution based on time range:
+    - 1-minute windows for the most recent hour
+    - 5-minute windows for anything past that
+    
+    Query parameters:
+    - start: Start time (ISO format or relative like "-1h", default: "-7d")
+    - end: End time (ISO format, optional)
+    - window: Override automatic window selection ("1m", "5m", "15m", "1h")
+    """
+    try:
+        start_time = request.args.get('start', '-7d')
+        end_time = request.args.get('end')
+        window = request.args.get('window')
+        
+        # Auto-select window based on time range if not specified
+        if not window:
+            if start_time.startswith('-'):
+                if 'm' in start_time:
+                    minutes = int(start_time.replace('-', '').replace('m', ''))
+                    window = '1m' if minutes <= 60 else '5m'
+                elif 'h' in start_time:
+                    hours = int(start_time.replace('-', '').replace('h', ''))
+                    window = '1m' if hours <= 1 else '5m'
+                elif 'd' in start_time:
+                    window = '5m'
+                else:
+                    window = '5m'
+            else:
+                window = '5m'
+        
+        statistics = influx_client.read_aggregated_statistics(
+            sensor_id=sensor_id,
+            start_time=start_time,
+            end_time=end_time,
+            window=window
+        )
+        
+        return jsonify({
+            'sensor_id': sensor_id,
+            'count': len(statistics),
+            'window': window,
+            'statistics': statistics
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error retrieving statistics: {e}")
         return jsonify({
             'error': 'Internal server error',
             'details': str(e)
