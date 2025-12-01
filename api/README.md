@@ -107,7 +107,7 @@ Response (200 OK):
 ```
 
 ### GET /measurements/<sensor_id>/statistics
-Retrieve detailed pre-computed statistics (mean, min, max, count) with automatic resolution selection.
+Retrieve detailed pre-computed statistics (mean, min, max) with automatic resolution selection.
 
 This endpoint reads from pre-computed aggregations stored by background tasks.
 
@@ -135,14 +135,12 @@ Response (200 OK):
       "temperature": {
         "mean": 25.3,
         "min": 24.5,
-        "max": 26.1,
-        "count": 150
+        "max": 26.1
       },
       "conductivity": {
         "mean": 1542,
         "min": 1520,
-        "max": 1565,
-        "count": 150
+        "max": 1565
       }
     }
   ]
@@ -180,12 +178,12 @@ Response (200 OK):
 cd storage && docker-compose up -d
 ```
 
-2. Important: Setup aggregation tasks first:
+2. Setup aggregation tasks (required for aggregated/statistics endpoints):
 ```bash
-python3 -m storage.setup_aggregations
+python3 -m operations.aggregation_runner
 ```
 
-This creates background tasks that pre-compute aggregations.
+This creates 6 background tasks that pre-compute aggregations (mean, min, max for 1m and 5m windows).
 
 ### Running the API
 

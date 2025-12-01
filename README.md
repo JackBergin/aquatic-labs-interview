@@ -42,8 +42,7 @@ This system simulates sensors that measure temperature and conductivity, stores 
 │  │sensor_data_1m  │      │sensor_data_5m  │       │
 │  │(1-min windows) │      │(5-min windows) │       │
 │  │• Last 1 hour   │      │• Older than 1hr│       │
-│  │• mean,min,max, │      │• mean,min,max, │       │
-│  │  count         │      │  count         │       │
+│  │• mean,min,max  │      │• mean,min,max  │       │
 │  └────────────────┘      └────────────────┘       │
 │         ▲                         ▲               │
 │         └─────────┬───────────────┘               │
@@ -65,10 +64,15 @@ This system simulates sensors that measure temperature and conductivity, stores 
 
 ## Documentation
 
-- [API Reference](api/README.md) - Complete API endpoint documentation
-- [Makefile Guide](MAKEFILE_GUIDE.md) - How to use the Makefile
-- [Storage Layer](storage/README.md) - InfluxDB client documentation  
-- [Architecture & Design Decisions](ARCHITECTURE.md) - System design rationale
+### Module Documentation
+- **[API Reference](api/README.md)** - REST API endpoints, request/response formats, testing examples
+- **[Storage Layer](storage/README.md)** - InfluxDB client, data model, database schema
+- **[Simulation](simulation/README.md)** - Sensor simulator configuration and usage
+- **[Operations](operations/README.md)** - Aggregation tasks, background jobs, task management
+
+### Quick Reference
+- Run `make help` to see all available Makefile commands
+- See examples below for common API usage patterns
 
 ## Project Structure
 
@@ -97,26 +101,37 @@ aquatic-labs-interview/
 The easiest way to run the entire system:
 
 ```bash
-# Complete setup
-make setup        # Sets up InfluxDB + aggregation tasks
+# 1. Install dependencies (if not already done)
+make install
 
-# Start all services
-make run-all      # Starts API + Simulator in background
+# 2. Complete setup (starts InfluxDB + creates aggregation tasks)
+make setup
 
-# Check status
-make health       # Verify all services are running
+# 3. Start all services (API + Simulator in background)
+make run-all
 
-# View logs
-make logs-api     # Tail API logs
-make logs-simulator  # Tail simulator logs
+# 4. Check everything is running
+make health
 
-# Stop everything
-make stop         # Stop all services
+# 5. Test the API
+make test-api
 ```
 
 **Quick Start One-Liner:**
 ```bash
-make install && make setup && make run-all
+make install && make setup && make run-all && sleep 3 && make health
+```
+
+**View real-time logs:**
+```bash
+make logs-api        # Tail API logs
+make logs-simulator  # Tail simulator logs
+```
+
+**Stop everything:**
+```bash
+make stop           # Stop API + Simulator
+make stop-db        # Stop InfluxDB
 ```
 
 ### Manual Setup
@@ -161,9 +176,11 @@ This sets up background tasks that automatically compute and store aggregations:
 python3 -m operations.aggregation_runner
 ```
 
-This creates two InfluxDB tasks:
-- **1-minute aggregation**: Runs every minute for recent data
-- **5-minute aggregation**: Runs every 5 minutes for data older than 1 hour
+This creates 6 InfluxDB tasks that run automatically:
+- **1-minute aggregations** (3 tasks): mean, min, max - runs every minute
+- **5-minute aggregations** (3 tasks): mean, min, max - runs every 5 minutes
+
+These tasks continuously compute statistics as new data arrives.
 
 #### 4. Start the API Server
 
@@ -187,16 +204,37 @@ You should see measurements being sent
 
 ## Makefile Commands
 
+Run `make help` to see all available commands. Key commands:
+
 ```bash
-make help              # Show all available commands
+# Setup & Installation
 make install           # Install Python dependencies
-make setup             # Complete setup (DB + Tasks)
-make run-all           # Start API + Simulator
-make stop              # Stop all services
-make health            # Check service status
-make test-api          # Test API endpoints
-make query-aggregated  # Query aggregated data
-make clean             # Clean up everything
+make setup             # Complete setup (InfluxDB + aggregation tasks + logs)
+make setup-db          # Start InfluxDB only
+make setup-tasks       # Setup aggregation tasks only
+
+# Running Services
+make run-all           # Start API + Simulator in background
+make dev-api           # Run API in foreground (for development)
+make dev-simulator     # Run simulator in foreground
+
+# Monitoring
+make health            # Check all service health
+make logs-api          # Tail API logs
+make logs-simulator    # Tail simulator logs
+make logs-influxdb     # View InfluxDB logs
+
+# Testing
+make test-api          # Test basic API endpoints
+make query-raw         # Query raw measurements
+make query-aggregated  # Query aggregated data (mean values)
+make query-stats       # Query statistics (mean, min, max)
+
+# Maintenance
+make stop              # Stop API + Simulator
+make stop-db           # Stop InfluxDB
+make clean             # Stop everything + cleanup
+make restart           # Restart all services
 ```
 
 ## API Endpoints
@@ -220,7 +258,7 @@ GET /measurements/sensor_001?start=-1h&limit=10
 GET /measurements/sensor_001/aggregated?start=-1h
 ```
 
-**Get Statistics** (mean, min, max, count from pre-computed data)
+**Get Statistics** (mean, min, max from pre-computed data)
 ```bash
 GET /measurements/sensor_001/statistics?start=-2h
 ```
@@ -243,7 +281,58 @@ GET /health
 
 
 ## Testing the API
-Refer to [API README](api/README.md)
+
+### Quick Tests Using Makefile
+
+```bash
+# Test basic endpoints
+make test-api
+
+# Query raw measurements (last hour, 10 records)
+make query-raw
+
+# Query aggregated data (mean values, last hour)  
+make query-aggregated
+
+# Query statistics (mean, min, max, last 2 hours)
+make query-stats
+```
+
+### Manual Testing with curl
+
+**Submit a test measurement:**
+```bash
+curl -X POST http://localhost:8081/measurements \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sensor_id": "test_sensor",
+    "timestamp": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'",
+    "temperature": 25.5,
+    "conductivity": 1500
+  }'
+```
+
+**Get raw measurements:**
+```bash
+curl "http://localhost:8081/measurements/sensor_001?start=-1h&limit=10" | python3 -m json.tool
+```
+
+**Get aggregated measurements (mean values):**
+```bash
+curl "http://localhost:8081/measurements/sensor_001/aggregated?start=-1h" | python3 -m json.tool
+```
+
+**Get detailed statistics (mean, min, max):**
+```bash
+curl "http://localhost:8081/measurements/sensor_001/statistics?start=-2h" | python3 -m json.tool
+```
+
+**List all sensors:**
+```bash
+curl "http://localhost:8081/sensors" | python3 -m json.tool
+```
+
+For more examples and detailed documentation, see the **[API README](api/README.md)**.
 
 
 ### Accessing InfluxDB UI
@@ -266,14 +355,14 @@ The system stores data in three measurements:
 **2. water_quality_1m** (1-Minute Aggregations)
 - Tags: sensor_id, stat_type
 - Fields: temperature, conductivity
-- Computed every minute for recent data
-- Contains: mean, min, max, count
+- Computed every minute for recent data (last hour)
+- Contains: mean, min, max
 
 **3. water_quality_5m** (5-Minute Aggregations)
 - Tags: sensor_id, stat_type
 - Fields: temperature, conductivity
-- Computed every 5 minutes for data older than 1 hour
-- Contains: mean, min, max, count
+- Computed every 5 minutes for older data (beyond 1 hour)
+- Contains: mean, min, max
 
 ## Author
 
